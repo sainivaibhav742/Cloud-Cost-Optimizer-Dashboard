@@ -36,7 +36,7 @@ def health_check():
 @router.get("/costs/daily", response_model=List[CostResponse])
 def get_daily_costs(current_user = Depends(get_current_user), db: Session = Depends(get_db)):
     costs = db.query(CloudCost).all()
-    return costs
+    return [{"id": c.id, "date": str(c.date), "service": c.service, "cost": c.cost, "usage": c.usage, "account_id": c.account_id} for c in costs]
 
 @router.post("/costs/fetch")
 def fetch_costs(current_user = Depends(get_current_user)):
@@ -80,6 +80,108 @@ def get_recommendations(current_user = Depends(get_current_user), db: Session = 
         recommendations = detector.get_all_recommendations()
 
         return recommendations
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/budget/simulate")
+def simulate_budget(budget_amount: float, months: int = 12, current_user = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Simulate budget impact over time based on current spending patterns
+    """
+    # Get user's cost data
+    costs = db.query(CloudCost).all()
+
+    if not costs:
+        return {"error": "No cost data available for simulation"}
+
+    # Calculate average monthly spend
+    monthly_spends = {}
+    for cost in costs:
+        month_key = cost.date.strftime("%Y-%m")
+        if month_key not in monthly_spends:
+            monthly_spends[month_key] = 0
+        monthly_spends[month_key] += cost.cost
+
+    avg_monthly = sum(monthly_spends.values()) / len(monthly_spends) if monthly_spends else 0
+
+    # Simulate budget over months
+    simulation = []
+    remaining_budget = budget_amount
+
+    for month in range(1, months + 1):
+        monthly_cost = avg_monthly  # Could add trend analysis here
+        remaining_budget -= monthly_cost
+
+        simulation.append({
+            "month": month,
+            "projected_cost": round(monthly_cost, 2),
+            "remaining_budget": round(max(0, remaining_budget), 2),
+            "budget_exceeded": remaining_budget < 0
+        })
+
+        if remaining_budget <= 0:
+            break
+
+    return {
+        "budget_amount": budget_amount,
+        "average_monthly_spend": round(avg_monthly, 2),
+        "simulation": simulation,
+        "months_until_depletion": len(simulation) if simulation and simulation[-1]["remaining_budget"] <= 0 else None
+    }
+
+@router.get("/ai-recommendations")
+def get_ai_recommendations(current_user = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Get AI-powered cost optimization recommendations using OpenAI
+    """
+    try:
+        from src.services.ai_recommendations import AIRecommendationService
+
+        ai_service = AIRecommendationService()
+        recommendations = ai_service.generate_ai_recommendations(db)
+
+        return {"recommendations": recommendations}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/monitoring/health")
+def get_system_health(current_user = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Get system health and performance metrics
+    """
+    try:
+        from src.services.monitoring_service import monitoring
+
+        health_data = monitoring.get_system_health(db)
+        return health_data
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/monitoring/performance")
+def get_performance_metrics(current_user = Depends(get_current_user)):
+    """
+    Get API performance metrics
+    """
+    try:
+        from src.services.monitoring_service import monitoring
+
+        return monitoring.get_performance_report()
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/monitoring/savings")
+def get_cost_savings_report(days: int = 30, current_user = Depends(get_current_user)):
+    """
+    Get cost savings report for the specified period
+    """
+    try:
+        from src.services.monitoring_service import monitoring
+
+        return monitoring.calculate_total_savings(days)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

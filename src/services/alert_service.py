@@ -126,3 +126,43 @@ class AlertService:
 
         if self.slack_enabled:
             self.send_slack_alert(message)
+
+    def send_daily_cost_report(self, daily_cost: float, recommendations: List[Dict], alert_config: Dict = None):
+        """
+        Send daily cost report with recommendations
+        """
+        message = self._format_daily_report(daily_cost, recommendations)
+
+        # Send email alerts
+        if self.email_enabled:
+            self.send_email_alert(
+                subject=f"Daily Cloud Cost Report - ${daily_cost:.2f}",
+                body=message.replace('\n', '<br>')
+            )
+
+        # Send Slack alerts
+        if self.slack_enabled:
+            slack_message = f"💰 Daily Cost Report: ${daily_cost:.2f}\n"
+            if recommendations:
+                slack_message += "Top recommendations:\n"
+                for rec in recommendations[:3]:
+                    slack_message += f"• {rec.get('suggestion', rec.get('description', 'Check service'))}\n"
+            self.send_slack_alert(slack_message)
+
+    def _format_daily_report(self, daily_cost: float, recommendations: List[Dict]) -> str:
+        """
+        Format daily cost report message
+        """
+        message = f"💰 Daily Cloud Cost Report\n\n"
+        message += f"Today's Total Cost: ${daily_cost:.2f}\n\n"
+
+        if recommendations:
+            message += "📋 Top Recommendations:\n"
+            for rec in recommendations[:5]:  # Top 5 recommendations
+                message += f"• {rec.get('suggestion', rec.get('description', 'Recommendation'))}\n"
+                if 'potential_savings' in rec and rec['potential_savings'] > 0:
+                    message += f"  💰 Potential savings: ${rec['potential_savings']:.2f}\n"
+            message += "\n"
+
+        message += "Keep optimizing your cloud costs! ☁️"
+        return message

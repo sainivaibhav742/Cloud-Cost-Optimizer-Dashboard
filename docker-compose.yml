@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+      - ./cloud_cost_db.db:/app/cloud_cost_db.db
+    environment:
+      - DATABASE_URL=sqlite:///./cloud_cost_db.db
+    depends_on:
+      - db
+
+  db:
+    image: sqlite3:latest
+    volumes:
+      - ./cloud_cost_db.db:/data/cloud_cost_db.db
+    command: ["sqlite3", "/data/cloud_cost_db.db", ".read /dev/null"]
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+    depends_on:
+      - backend
