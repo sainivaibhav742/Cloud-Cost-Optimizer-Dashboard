@@ -224,3 +224,7 @@ temp/
 *.tmp
 *.temp
 .cache/
+
+# Next.js
+.next/
+out/
