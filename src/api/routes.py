@@ -185,3 +185,67 @@ def get_cost_savings_report(days: int = 30, current_user = Depends(get_current_u
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/demo/seed")
+def seed_demo_data(db: Session = Depends(get_db)):
+    """
+    Seed database with demo data for development/testing.
+    WARNING: Only use in development environments!
+    """
+    import os
+    
+    if os.getenv("ENVIRONMENT", "development") != "development":
+        raise HTTPException(status_code=403, detail="Demo data seeding only allowed in development mode")
+    
+    try:
+        from src.services.demo_data_service import DemoDataService
+        
+        DemoDataService.seed_all_demo_data(db)
+        
+        return {
+            "message": "Demo data seeded successfully",
+            "demo_user": {"username": "demo", "password": "demo123"}
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/costs/summary")
+def get_cost_summary(days: int = 30, current_user = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Get cost summary statistics for the specified period
+    """
+    try:
+        from datetime import datetime, timedelta
+        
+        cutoff_date = datetime.now().date() - timedelta(days=days)
+        costs = db.query(CloudCost).filter(CloudCost.date >= cutoff_date).all()
+        
+        if not costs:
+            return {
+                "total_cost": 0,
+                "daily_average": 0,
+                "service_breakdown": {},
+                "period_days": days
+            }
+        
+        # Calculate statistics
+        total_cost = sum(cost.cost for cost in costs)
+        service_breakdown = {}
+        
+        for cost in costs:
+            if cost.service not in service_breakdown:
+                service_breakdown[cost.service] = 0
+            service_breakdown[cost.service] += cost.cost
+        
+        # Sort by cost descending
+        service_breakdown = dict(sorted(service_breakdown.items(), key=lambda x: x[1], reverse=True))
+        
+        return {
+            "total_cost": round(total_cost, 2),
+            "daily_average": round(total_cost / days, 2),
+            "service_breakdown": {k: round(v, 2) for k, v in service_breakdown.items()},
+            "period_days": days,
+            "total_records": len(costs)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

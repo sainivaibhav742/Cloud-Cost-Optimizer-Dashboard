@@ -2,17 +2,16 @@ from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-import hashlib
 import os
 from sqlalchemy.orm import Session
 from src.models.user_model import User
-from src.models.database import get_db
 
-SECRET_KEY = "your-secret-key-here"  # In production, use environment variable
+SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here-change-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-pwd_context = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
+# Use bcrypt for password hashing (more secure)
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class AuthService:
     SECRET_KEY = SECRET_KEY
@@ -23,7 +22,8 @@ class AuthService:
 
     @staticmethod
     def get_password_hash(password: str) -> str:
-        return pwd_context.hash(password[:72])
+        # Bcrypt has a 72-byte limit
+        return pwd_context.hash(password)
 
     @staticmethod
     def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
