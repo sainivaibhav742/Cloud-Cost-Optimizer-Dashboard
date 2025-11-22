@@ -50,17 +50,20 @@ def test_recommendations_endpoint(mock_detector_class):
     # Clean up
     app.dependency_overrides = {}
 
-@patch('src.services.auth_service.pwd_context')
-def test_auth_service(mock_context):
+def test_auth_service():
     from src.services.auth_service import AuthService
 
-    mock_context.hash.return_value = "$2b$12$abcdefghijklmnopqrstuvwx"
-    mock_context.verify.return_value = True
-
     # Test password hashing
-    hashed = AuthService.get_password_hash("test")
-    assert hashed == "$2b$12$abcdefghijklmnopqrstuvwx"
-    assert AuthService.verify_password("test", "$2b$12$abcdefghijklmnopqrstuvwx")
+    password = "test_password"
+    hashed = AuthService.get_password_hash(password)
+    
+    # Verify the hash is a string and not empty
+    assert isinstance(hashed, str)
+    assert len(hashed) > 0
+    
+    # Verify password verification works
+    assert AuthService.verify_password(password, hashed)
+    assert not AuthService.verify_password("wrong_password", hashed)
 
 def test_aws_cost_service():
     from src.services.aws_cost_service import AWSCostService

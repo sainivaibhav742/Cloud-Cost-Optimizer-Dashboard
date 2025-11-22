@@ -8,24 +8,27 @@ services:
     volumes:
       - ./src:/app/src
       - ./tests:/app/tests
-      - ./cloud_cost_db.db:/app/cloud_cost_db.db
+      - db-data:/app/data
     environment:
-      - DATABASE_URL=sqlite:///./cloud_cost_db.db
-    depends_on:
-      - db
-
-  db:
-    image: sqlite3:latest
-    volumes:
-      - ./cloud_cost_db.db:/data/cloud_cost_db.db
-    command: ["sqlite3", "/data/cloud_cost_db.db", ".read /dev/null"]
+      - DATABASE_URL=sqlite:///./data/cloud_cost_db.db
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-here-change-in-production}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - ENABLE_DEMO_MODE=true
+    env_file:
+      - .env
+    restart: unless-stopped
 
   frontend:
-    build: ./frontend
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
-    volumes:
-      - ./frontend/src:/app/src
-      - ./frontend/public:/app/public
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
     depends_on:
       - backend
+    restart: unless-stopped
+
+volumes:
+  db-data:
