@@ -204,7 +204,7 @@ export default function RecommendationsPage() {
               </tr>
             </thead>
             <tbody>
-              {recommendations.cost_spikes.map((rec: any, idx: number) => (
+              {recommendations.cost_spikes.map((rec: Recommendation & { recent_cost?: number; previous_cost?: number; increase_percent?: number }, idx: number) => (
                 <tr key={idx}>
                   <td>{rec.service}</td>
                   <td>${rec.recent_cost?.toFixed(2)}</td>

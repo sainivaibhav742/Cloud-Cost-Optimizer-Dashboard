@@ -28,7 +28,8 @@ api.interceptors.response.use(
       // Clear token and redirect to login
       if (typeof window !== 'undefined') {
         localStorage.removeItem('token');
-        window.location.href = '/login';
+        // Use window.location.replace to avoid adding to history
+        window.location.replace('/login');
       }
     }
     return Promise.reject(error);

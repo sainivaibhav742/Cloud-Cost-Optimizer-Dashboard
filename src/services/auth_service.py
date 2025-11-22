@@ -22,7 +22,9 @@ class AuthService:
 
     @staticmethod
     def get_password_hash(password: str) -> str:
-        # Bcrypt has a 72-byte limit
+        # Bcrypt has a 72-byte limit, truncate to prevent DoS
+        if len(password) > 72:
+            password = password[:72]
         return pwd_context.hash(password)
 
     @staticmethod

@@ -194,8 +194,15 @@ def seed_demo_data(db: Session = Depends(get_db)):
     """
     import os
     
-    if os.getenv("ENVIRONMENT", "development") != "development":
-        raise HTTPException(status_code=403, detail="Demo data seeding only allowed in development mode")
+    # Only allow seeding if explicitly enabled and in development
+    environment = os.getenv("ENVIRONMENT", "").lower()
+    enable_demo = os.getenv("ENABLE_DEMO_MODE", "false").lower() == "true"
+    
+    if environment == "production" or not enable_demo:
+        raise HTTPException(
+            status_code=403, 
+            detail="Demo data seeding only allowed when ENABLE_DEMO_MODE=true and ENVIRONMENT=development"
+        )
     
     try:
         from src.services.demo_data_service import DemoDataService
